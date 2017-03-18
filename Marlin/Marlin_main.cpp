@@ -451,6 +451,9 @@ void setup()
 
 void loop()
 {
+
+	pinMode(1, OUTPUT);
+	digitalWrite(1, HIGH);
   if(buflen < (BUFSIZE-1))
     get_command();
   #ifdef SDSUPPORT
