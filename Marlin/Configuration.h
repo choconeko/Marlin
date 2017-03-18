@@ -331,7 +331,6 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 #endif
 
 // Travel limits after homing
-<<<<<<< .merge_file_a00612
 #ifdef MFC_PRN3D
 	#define X_MAX_POS 170
 	#define X_MIN_POS 0
@@ -339,18 +338,18 @@ const bool Z_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of
 	#define Y_MIN_POS 0
 	#define Z_MAX_POS 160
 	#define Z_MIN_POS 0
-=======
-#define X_MAX_POS 205
-#define X_MIN_POS 0
-#define Y_MAX_POS 205
-#define Y_MIN_POS 0
-#define Z_MAX_POS 200
+#else
+  #define X_MAX_POS 205
+  #define X_MIN_POS 0
+  #define Y_MAX_POS 205
+  #define Y_MIN_POS 0
+  #define Z_MAX_POS 200
+#endif
 
 #ifndef ENABLE_AUTO_BED_LEVELING
 #define Z_MIN_POS 0
 #else
 #define Z_MIN_POS (-1*Z_PROBE_OFFSET_FROM_EXTRUDER)  //With Auto Bed Leveling, the Z_MIN MUST have the same distance as Z_PROBE
->>>>>>> .merge_file_a10052
 #endif
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
