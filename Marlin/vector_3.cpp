@@ -22,19 +22,9 @@
 #ifdef ENABLE_AUTO_BED_LEVELING
 #include "vector_3.h"
 
-vector_3::vector_3()
-{
-  this->x = 0;
-  this->y = 0;
-  this->z = 0;
-}
+vector_3::vector_3() : x(0), y(0), z(0) { }
 
-vector_3::vector_3(float x, float y, float z)
-{
-	this->x = x;
-	this->y = y;
-	this->z = z;
-}
+vector_3::vector_3(float x_, float y_, float z_) : x(x_), y(y_), z(z_) { }
 
 vector_3 vector_3::cross(vector_3 left, vector_3 right)
 {
@@ -62,7 +52,7 @@ vector_3 vector_3::get_normal()
 
 float vector_3::get_length() 
 {
-        float length = sqrt((x * x) + (y * y) + (z * z));
+	float length = sqrt((x * x) + (y * y) + (z * z));
 	return length;
 }
  
@@ -131,7 +121,7 @@ matrix_3x3 matrix_3x3::create_look_at(vector_3 target)
 {
     vector_3 z_row = target.get_normal();
     vector_3 x_row = vector_3(1, 0, -target.x/target.z).get_normal();
-    vector_3 y_row = vector_3(0, 1, -target.y/target.z).get_normal();
+    vector_3 y_row = vector_3::cross(z_row, x_row).get_normal();
 
    // x_row.debug("x_row");
    // y_row.debug("y_row");
