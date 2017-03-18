@@ -40,6 +40,10 @@
   #define AUTOTEMP_OLDWEIGHT 0.98
 #endif
 
+//Show Temperature ADC value
+//The M105 command return, besides traditional information, the ADC value read from temperature sensors.
+//#define SHOW_TEMP_ADC_VALUES
+
 //  extruder run-out prevention. 
 //if the machine is idle, and the temperature over MINTEMP, every couple of SECONDS some filament is extruded
 //#define EXTRUDER_RUNOUT_PREVENT  
@@ -144,6 +148,21 @@
 #ifdef Z_DUAL_STEPPER_DRIVERS
   #undef EXTRUDERS
   #define EXTRUDERS 1
+#endif
+
+// Same again but for Y Axis.
+//#define Y_DUAL_STEPPER_DRIVERS
+
+// Define if the two Y drives need to rotate in opposite directions
+#define INVERT_Y2_VS_Y_DIR true
+
+#ifdef Y_DUAL_STEPPER_DRIVERS
+  #undef EXTRUDERS
+  #define EXTRUDERS 1
+#endif
+
+#if defined (Z_DUAL_STEPPER_DRIVERS) && defined (Y_DUAL_STEPPER_DRIVERS)
+  #error "You cannot have dual drivers for both Y and Z"
 #endif
 
 // Enable this for dual x-carriage printers. 
@@ -257,6 +276,11 @@
 #define SD_FINISHED_STEPPERRELEASE true  //if sd support and the file is finished: disable steppers?
 #define SD_FINISHED_RELEASECOMMAND "M84 X Y Z E" // You might want to keep the z enabled so your bed stays in place.
 
+#define SDCARD_RATHERRECENTFIRST  //reverse file order of sd card menu display. Its sorted practically after the filesystem block order. 
+// if a file is deleted, it frees a block. hence, the order is not purely cronological. To still have auto0.g accessible, there is again the option to do that.
+// using:
+//#define MENU_ADDAUTOSTART
+
 // The hardware watchdog should reset the Microcontroller disabling all outputs, in case the firmware gets stuck and doesn't do temperature regulation.
 //#define USE_WATCHDOG
 
@@ -269,6 +293,26 @@
 
 // Enable the option to stop SD printing when hitting and endstops, needs to be enabled from the LCD menu when this option is enabled.
 //#define ABORT_ON_ENDSTOP_HIT_FEATURE_ENABLED
+
+// Babystepping enables the user to control the axis in tiny amounts, independently from the normal printing process
+// it can e.g. be used to change z-positions in the print startup phase in realtime
+// does not respect endstops!
+//#define BABYSTEPPING
+#ifdef BABYSTEPPING
+  #define BABYSTEP_XY  //not only z, but also XY in the menu. more clutter, more functions
+  #define BABYSTEP_INVERT_Z false  //true for inverse movements in Z
+  #define BABYSTEP_Z_MULTIPLICATOR 2 //faster z movements
+  
+  #ifdef COREXY
+    #error BABYSTEPPING not implemented for COREXY yet.
+  #endif
+
+  #ifdef DELTA
+    #ifdef BABYSTEP_XY
+      #error BABYSTEPPING only implemented for Z axis on deltabots.
+    #endif
+  #endif
+#endif
 
 // extruder advance constant (s2/mm3)
 //
@@ -321,6 +365,9 @@ const unsigned int dropsegments=5; //everything with less than this number of st
   #define PS_ON_ASLEEP LOW
 #endif
 
+// Control heater 0 and heater 1 in parallel.
+//#define HEATERS_PARALLEL
+
 //===========================================================================
 //=============================Buffers           ============================
 //===========================================================================
@@ -351,7 +398,7 @@ const unsigned int dropsegments=5; //everything with less than this number of st
 
 //adds support for experimental filament exchange support M600; requires display
 #ifdef ULTIPANEL
-  //#define FILAMENTCHANGEENABLE
+  #define FILAMENTCHANGEENABLE
   #ifdef FILAMENTCHANGEENABLE
     #define FILAMENTCHANGE_XPOS 3
     #define FILAMENTCHANGE_YPOS 3
@@ -360,12 +407,22 @@ const unsigned int dropsegments=5; //everything with less than this number of st
     #define FILAMENTCHANGE_FINALRETRACT -100
   #endif
 #endif
+
+#ifdef FILAMENTCHANGEENABLE
+  #ifdef EXTRUDER_RUNOUT_PREVENT
+    #error EXTRUDER_RUNOUT_PREVENT currently incompatible with FILAMENTCHANGE
+  #endif 
+#endif
  
 //===========================================================================
 //=============================  Define Defines  ============================
 //===========================================================================
 #if EXTRUDERS > 1 && defined TEMP_SENSOR_1_AS_REDUNDANT
   #error "You cannot use TEMP_SENSOR_1_AS_REDUNDANT if EXTRUDERS > 1"
+#endif
+
+#if EXTRUDERS > 1 && defined HEATERS_PARALLEL
+  #error "You cannot use HEATERS_PARALLEL if EXTRUDERS > 1"
 #endif
 
 #if TEMP_SENSOR_0 > 0

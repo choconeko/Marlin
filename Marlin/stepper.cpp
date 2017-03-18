@@ -383,10 +383,20 @@ ISR(TIMER1_COMPA_vect)
     }
     if((out_bits & (1<<Y_AXIS))!=0){
       WRITE(Y_DIR_PIN, INVERT_Y_DIR);
+	  
+	  #ifdef Y_DUAL_STEPPER_DRIVERS
+	    WRITE(Y2_DIR_PIN, !(INVERT_Y_DIR == INVERT_Y2_VS_Y_DIR));
+	  #endif
+	  
       count_direction[Y_AXIS]=-1;
     }
     else{
       WRITE(Y_DIR_PIN, !INVERT_Y_DIR);
+	  
+	  #ifdef Y_DUAL_STEPPER_DRIVERS
+	    WRITE(Y2_DIR_PIN, (INVERT_Y_DIR == INVERT_Y2_VS_Y_DIR));
+	  #endif
+	  
       count_direction[Y_AXIS]=1;
     }
 
@@ -582,9 +592,18 @@ ISR(TIMER1_COMPA_vect)
         counter_y += current_block->steps_y;
         if (counter_y > 0) {
           WRITE(Y_STEP_PIN, !INVERT_Y_STEP_PIN);
+		  
+		  #ifdef Y_DUAL_STEPPER_DRIVERS
+			WRITE(Y2_STEP_PIN, !INVERT_Y_STEP_PIN);
+		  #endif
+		  
           counter_y -= current_block->step_event_count;
           count_position[Y_AXIS]+=count_direction[Y_AXIS];
           WRITE(Y_STEP_PIN, INVERT_Y_STEP_PIN);
+		  
+		  #ifdef Y_DUAL_STEPPER_DRIVERS
+			WRITE(Y2_STEP_PIN, INVERT_Y_STEP_PIN);
+		  #endif
         }
 
       counter_z += current_block->steps_z;
@@ -756,6 +775,10 @@ void st_init()
   #endif
   #if defined(Y_DIR_PIN) && Y_DIR_PIN > -1
     SET_OUTPUT(Y_DIR_PIN);
+		
+	#if defined(Y_DUAL_STEPPER_DRIVERS) && defined(Y2_DIR_PIN) && (Y2_DIR_PIN > -1)
+	  SET_OUTPUT(Y2_DIR_PIN);
+	#endif
   #endif
   #if defined(Z_DIR_PIN) && Z_DIR_PIN > -1
     SET_OUTPUT(Z_DIR_PIN);
@@ -787,6 +810,11 @@ void st_init()
   #if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
     SET_OUTPUT(Y_ENABLE_PIN);
     if(!Y_ENABLE_ON) WRITE(Y_ENABLE_PIN,HIGH);
+	
+	#if defined(Y_DUAL_STEPPER_DRIVERS) && defined(Y2_ENABLE_PIN) && (Y2_ENABLE_PIN > -1)
+	  SET_OUTPUT(Y2_ENABLE_PIN);
+	  if(!Y_ENABLE_ON) WRITE(Y2_ENABLE_PIN,HIGH);
+	#endif
   #endif
   #if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
     SET_OUTPUT(Z_ENABLE_PIN);
@@ -869,6 +897,10 @@ void st_init()
   #if defined(Y_STEP_PIN) && (Y_STEP_PIN > -1)
     SET_OUTPUT(Y_STEP_PIN);
     WRITE(Y_STEP_PIN,INVERT_Y_STEP_PIN);
+    #if defined(Y_DUAL_STEPPER_DRIVERS) && defined(Y2_STEP_PIN) && (Y2_STEP_PIN > -1)
+      SET_OUTPUT(Y2_STEP_PIN);
+      WRITE(Y2_STEP_PIN,INVERT_Y_STEP_PIN);
+    #endif
     disable_y();
   #endif
   #if defined(Z_STEP_PIN) && (Z_STEP_PIN > -1)
@@ -996,6 +1028,153 @@ void quickStop()
   current_block = NULL;
   ENABLE_STEPPER_DRIVER_INTERRUPT();
 }
+
+#ifdef BABYSTEPPING
+
+
+void babystep(const uint8_t axis,const bool direction)
+{
+  //MUST ONLY BE CALLED BY A ISR, it depends on that no other ISR interrupts this
+    //store initial pin states
+  switch(axis)
+  {
+  case X_AXIS:
+  {
+    enable_x();   
+    uint8_t old_x_dir_pin= READ(X_DIR_PIN);  //if dualzstepper, both point to same direction.
+   
+    //setup new step
+    WRITE(X_DIR_PIN,(INVERT_X_DIR)^direction);
+    #ifdef DUAL_X_CARRIAGE
+      WRITE(X2_DIR_PIN,(INVERT_X_DIR)^direction);
+    #endif
+    
+    //perform step 
+    WRITE(X_STEP_PIN, !INVERT_X_STEP_PIN); 
+    #ifdef DUAL_X_CARRIAGE
+      WRITE(X2_STEP_PIN, !INVERT_X_STEP_PIN);
+    #endif
+    {
+    float x=1./float(axis+1)/float(axis+2); //wait a tiny bit
+    }
+    WRITE(X_STEP_PIN, INVERT_X_STEP_PIN);
+    #ifdef DUAL_X_CARRIAGE
+      WRITE(X2_STEP_PIN, INVERT_X_STEP_PIN);
+    #endif
+
+    //get old pin state back.
+    WRITE(X_DIR_PIN,old_x_dir_pin);
+    #ifdef DUAL_X_CARRIAGE
+      WRITE(X2_DIR_PIN,old_x_dir_pin);
+    #endif
+
+  }
+  break;
+  case Y_AXIS:
+  {
+    enable_y();   
+    uint8_t old_y_dir_pin= READ(Y_DIR_PIN);  //if dualzstepper, both point to same direction.
+   
+    //setup new step
+    WRITE(Y_DIR_PIN,(INVERT_Y_DIR)^direction);
+    #ifdef DUAL_Y_CARRIAGE
+      WRITE(Y2_DIR_PIN,(INVERT_Y_DIR)^direction);
+    #endif
+    
+    //perform step 
+    WRITE(Y_STEP_PIN, !INVERT_Y_STEP_PIN); 
+    #ifdef DUAL_Y_CARRIAGE
+      WRITE(Y2_STEP_PIN, !INVERT_Y_STEP_PIN);
+    #endif
+    {
+    float x=1./float(axis+1)/float(axis+2); //wait a tiny bit
+    }
+    WRITE(Y_STEP_PIN, INVERT_Y_STEP_PIN);
+    #ifdef DUAL_Y_CARRIAGE
+      WRITE(Y2_STEP_PIN, INVERT_Y_STEP_PIN);
+    #endif
+
+    //get old pin state back.
+    WRITE(Y_DIR_PIN,old_y_dir_pin);
+    #ifdef DUAL_Y_CARRIAGE
+      WRITE(Y2_DIR_PIN,old_y_dir_pin);
+    #endif
+
+  }
+  break;
+ 
+#ifndef DELTA
+  case Z_AXIS:
+  {
+    enable_z();
+    uint8_t old_z_dir_pin= READ(Z_DIR_PIN);  //if dualzstepper, both point to same direction.
+    //setup new step
+    WRITE(Z_DIR_PIN,(INVERT_Z_DIR)^direction^BABYSTEP_INVERT_Z);
+    #ifdef Z_DUAL_STEPPER_DRIVERS
+      WRITE(Z2_DIR_PIN,(INVERT_Z_DIR)^direction^BABYSTEP_INVERT_Z);
+    #endif
+    //perform step 
+    WRITE(Z_STEP_PIN, !INVERT_Z_STEP_PIN); 
+    #ifdef Z_DUAL_STEPPER_DRIVERS
+      WRITE(Z2_STEP_PIN, !INVERT_Z_STEP_PIN);
+    #endif
+    //wait a tiny bit
+    {
+    float x=1./float(axis+1); //absolutely useless
+    }
+    WRITE(Z_STEP_PIN, INVERT_Z_STEP_PIN);
+    #ifdef Z_DUAL_STEPPER_DRIVERS
+      WRITE(Z2_STEP_PIN, INVERT_Z_STEP_PIN);
+    #endif
+
+    //get old pin state back.
+    WRITE(Z_DIR_PIN,old_z_dir_pin);
+    #ifdef Z_DUAL_STEPPER_DRIVERS
+      WRITE(Z2_DIR_PIN,old_z_dir_pin);
+    #endif
+
+  }
+  break;
+#else //DELTA
+  case Z_AXIS:
+  {
+    enable_x();
+    enable_y();
+    enable_z();
+    uint8_t old_x_dir_pin= READ(X_DIR_PIN);  
+    uint8_t old_y_dir_pin= READ(Y_DIR_PIN);  
+    uint8_t old_z_dir_pin= READ(Z_DIR_PIN);  
+    //setup new step
+    WRITE(X_DIR_PIN,(INVERT_X_DIR)^direction^BABYSTEP_INVERT_Z);
+    WRITE(Y_DIR_PIN,(INVERT_Y_DIR)^direction^BABYSTEP_INVERT_Z);
+    WRITE(Z_DIR_PIN,(INVERT_Z_DIR)^direction^BABYSTEP_INVERT_Z);
+    
+    //perform step 
+    WRITE(X_STEP_PIN, !INVERT_X_STEP_PIN); 
+    WRITE(Y_STEP_PIN, !INVERT_Y_STEP_PIN); 
+    WRITE(Z_STEP_PIN, !INVERT_Z_STEP_PIN); 
+    
+    //wait a tiny bit
+    {
+    float x=1./float(axis+1); //absolutely useless
+    }
+    WRITE(X_STEP_PIN, INVERT_X_STEP_PIN); 
+    WRITE(Y_STEP_PIN, INVERT_Y_STEP_PIN); 
+    WRITE(Z_STEP_PIN, INVERT_Z_STEP_PIN);
+
+    //get old pin state back.
+    WRITE(X_DIR_PIN,old_x_dir_pin);
+    WRITE(Y_DIR_PIN,old_y_dir_pin);
+    WRITE(Z_DIR_PIN,old_z_dir_pin);
+
+  }
+  break;
+#endif
+ 
+  default:    break;
+  }
+}
+#endif //BABYSTEPPING
 
 void digitalPotWrite(int address, int value) // From Arduino DigitalPotControl example
 {

@@ -34,6 +34,10 @@
 # define analogInputToDigitalPin(p) ((p) + A0)
 #endif
 
+#ifdef AT90USB
+#include "HardwareSerial.h"
+#endif
+
 #include "MarlinSerial.h"
 
 #ifndef cbi
@@ -46,7 +50,11 @@
 #include "WString.h"
 
 #ifdef AT90USB
-  #define MYSERIAL Serial
+   #ifdef BTENABLED
+         #define MYSERIAL bt
+   #else
+         #define MYSERIAL Serial
+   #endif // BTENABLED
 #else
   #define MYSERIAL MSerial
 #endif
@@ -99,18 +107,23 @@ void manage_inactivity();
 #if defined(DUAL_X_CARRIAGE) && defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1 \
     && defined(X2_ENABLE_PIN) && X2_ENABLE_PIN > -1
   #define  enable_x() do { WRITE(X_ENABLE_PIN, X_ENABLE_ON); WRITE(X2_ENABLE_PIN, X_ENABLE_ON); } while (0)
-  #define disable_x() do { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); WRITE(X2_ENABLE_PIN,!X_ENABLE_ON); } while (0)
+  #define disable_x() do { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); WRITE(X2_ENABLE_PIN,!X_ENABLE_ON); axis_known_position[X_AXIS] = false; } while (0)
 #elif defined(X_ENABLE_PIN) && X_ENABLE_PIN > -1
   #define  enable_x() WRITE(X_ENABLE_PIN, X_ENABLE_ON)
-  #define disable_x() WRITE(X_ENABLE_PIN,!X_ENABLE_ON)
+  #define disable_x() { WRITE(X_ENABLE_PIN,!X_ENABLE_ON); axis_known_position[X_AXIS] = false; }
 #else
   #define enable_x() ;
   #define disable_x() ;
 #endif
 
 #if defined(Y_ENABLE_PIN) && Y_ENABLE_PIN > -1
-  #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
-  #define disable_y() WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON)
+  #ifdef Y_DUAL_STEPPER_DRIVERS
+    #define  enable_y() { WRITE(Y_ENABLE_PIN, Y_ENABLE_ON); WRITE(Y2_ENABLE_PIN,  Y_ENABLE_ON); }
+    #define disable_y() { WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON); WRITE(Y2_ENABLE_PIN, !Y_ENABLE_ON); axis_known_position[Y_AXIS] = false; }
+  #else
+    #define  enable_y() WRITE(Y_ENABLE_PIN, Y_ENABLE_ON)
+    #define disable_y() { WRITE(Y_ENABLE_PIN,!Y_ENABLE_ON); axis_known_position[Y_AXIS] = false; }
+  #endif
 #else
   #define enable_y() ;
   #define disable_y() ;
@@ -119,10 +132,10 @@ void manage_inactivity();
 #if defined(Z_ENABLE_PIN) && Z_ENABLE_PIN > -1
   #ifdef Z_DUAL_STEPPER_DRIVERS
     #define  enable_z() { WRITE(Z_ENABLE_PIN, Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN, Z_ENABLE_ON); }
-    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); }
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); WRITE(Z2_ENABLE_PIN,!Z_ENABLE_ON); axis_known_position[Z_AXIS] = false; }
   #else
     #define  enable_z() WRITE(Z_ENABLE_PIN, Z_ENABLE_ON)
-    #define disable_z() WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON)
+    #define disable_z() { WRITE(Z_ENABLE_PIN,!Z_ENABLE_ON); axis_known_position[Z_AXIS] = false; }
   #endif
 #else
   #define enable_z() ;
@@ -196,6 +209,7 @@ extern float endstop_adj[3];
 #endif
 extern float min_pos[3];
 extern float max_pos[3];
+extern bool axis_known_position[3];
 extern int fanSpeed;
 #ifdef BARICUDA
 extern int ValvePressure;
