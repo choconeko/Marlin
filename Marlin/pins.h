@@ -469,8 +469,11 @@
     #define LED_PIN            13
   #endif
 
-  #if MOTHERBOARD == 33 || MOTHERBOARD == 35 || MOTHERBOARD == 67
+
+  #if MB(RAMPS_13_EFB) || MB(RAMPS_13_EFF) || MB(AZTEEG_X3)
     #define FAN_PIN            9 // (Sprinter config)
+  #elif MB(AZTEEG_X3_PRO)
+    #define FAN_PIN            11 // Last Heater Pin on board
   #else
     #define FAN_PIN            4 // IO pin. Buffer needed
   #endif
@@ -1108,7 +1111,7 @@
 #endif
 
 // MFC gen.6 pin assignment
-#if MOTHERBOARD == 88
+#if MB(MFC_PRN3D)
 #define KNOWN_BOARD 1
 
 #ifndef __AVR_ATmega644P__
